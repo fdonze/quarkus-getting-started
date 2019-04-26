@@ -9,10 +9,10 @@ WORKDIR /project
 RUN  /opt/graalvm/bin/native-image -J-Djava.util.logging.manager=org.jboss.logmanager.LogManager \
      -J-Dcom.sun.xml.internal.bind.v2.bytecode.ClassTailor.noOptimize=true \
      -H:InitialCollectionPolicy='com.oracle.svm.core.genscavenge.CollectionPolicy$BySpaceAndTime' \
-     -jar getting-started-1.0-SNAPSHOT-runner.jar -J-Djava.util.concurrent.ForkJoinPool.common.parallelism=1 \
+     -jar quarkus-getting-started-1.0-SNAPSHOT-runner.jar -J-Djava.util.concurrent.ForkJoinPool.common.parallelism=1 \
      -H:+PrintAnalysisCallTree -H:EnableURLProtocols=http \
      -H:-SpawnIsolates -H:-JNI --no-server -H:-UseServiceLoaderFeature -H:+StackTrace \
-     && cp  -v getting-started-1.0-SNAPSHOT-runner /tmp/quarkus-runner
+     && cp  -v quarkus-getting-started-1.0-SNAPSHOT-runner /tmp/quarkus-runner
 
 FROM  registry.fedoraproject.org/fedora-minimal
 RUN mkdir -p /work
