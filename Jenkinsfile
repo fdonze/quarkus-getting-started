@@ -17,7 +17,8 @@ podTemplate(label: label,
               echo "Credential=$cred"
               echo "configure list"
               aws configure list
-              
+              echo "ARN[${params.role_arn}]"
+              echo "EXTERNA:_ID[${params.external_id}]"
               creds_json=$(aws sts assume-role --duration-seconds 900 --role-arn ${params.role_arn} --role-session-name session-ecr --external-id ${params.external_id})
               echo $creds_json
               
