@@ -1,5 +1,12 @@
 def label = "kaniko-${UUID.randomUUID().toString()}"
 
+parameters {
+  credentials credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', description: 'External ID', name: 'external_id', required: true
+  string defaultValue: 'https://ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com', description: 'Docker repository server', name: 'docker_repo_server', trim: true
+  string defaultValue: 'project/test', description: 'Docker image name', name: 'docker_image_name', trim: true
+  string defaultValue: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME', description: 'Role to assume', name: 'role_arn', trim: true
+}
+
 podTemplate(label: label, 
   containers: [
     containerTemplate(name: 'aws-cli', image: 'mesosphere/aws-cli', ttyEnabled: true, command: 'cat'),
@@ -27,7 +34,7 @@ podTemplate(label: label,
               export AWS_SECRET_ACCESS_KEY=$(echo "$creds_json" | $jq .Credentials.SecretAccessKey)
               export AWS_SESSION_TOKEN=$(echo "$creds_json" | $jq .Credentials.SessionToken)
              
-              login=$(aws ecr get-login --region ${params.docker_repo_region}' --no-include-email)
+              login=$(aws ecr get-login --region 'us-east-1' --no-include-email)
               echo "$login"
               password=$(echo $login | cut -f 6 -d ' ')
               AUTH=$(echo "AWS:$password" | base64 | tr -d \\\\\\n)
