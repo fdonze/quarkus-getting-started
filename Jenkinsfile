@@ -1,26 +1,50 @@
- def label = "kaniko-${UUID.randomUUID().toString()}"
+pipeline {
+  parameters {
+    credentials credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', description: 'External ID', name: 'external_id', required: true
+    string defaultValue: 'https://ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com', description: 'Docker repository server', name: 'docker_repo_server', trim: true
+    string defaultValue: 'project/test', description: 'Docker image name', name: 'docker_image_name', trim: true
+    string defaultValue: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME', description: 'Role to assume', name: 'role_arn', trim: true
+  }
 
-parameters {
-  credentials credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', description: 'External ID', name: 'external_id', required: true
-  string defaultValue: 'https://ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com', description: 'Docker repository server', name: 'docker_repo_server', trim: true
-  string defaultValue: 'project/test', description: 'Docker image name', name: 'docker_image_name', trim: true
-  string defaultValue: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME', description: 'Role to assume', name: 'role_arn', trim: true
-}
-
-podTemplate(label: label, 
-  containers: [
-    containerTemplate(name: 'aws-cli', image: 'mesosphere/aws-cli', ttyEnabled: true, command: 'cat'),
-    containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug', ttyEnabled: true, command: 'cat')
-  ],
-  volumes: [
-    emptyDirVolume(mountPath: '/kaniko/.docker/', memory: false)
-  ]) {  
-  node(label) {
+  agent {
+    kubernetes {
+      label 'kaniko'
+      yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kaniko
+spec:
+  containers:
+  - name: aws-cli
+    image: mesosphere/aws-cli
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: kaniko
+      mountPath: /kaniko/.docker/
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - cat
+    tty: true
+    volumeMounts:
+    - name: kaniko
+      mountPath: /kaniko/.docker/
+  volumes:
+  - name: kaniko
+    emptyDir: {}
+"""     
+    }
+  }  
+  stages {
     stage('ECR Login') {
+      environment {
+        EXTERNAL_ID_VALUE     = credentials('external_id')
+      }
+      steps {
         container('aws-cli') {
-          environment {
-            EXTERNAL_ID_VALUE     = credentials($external_id)
-          }
           sh '''#!/bin/sh
             apk update && apk add jq curl && rm -rf /var/cache/apk/*
             cred=$(curl http://169.254.169.254/latest/meta-data/iam/security-credentials)
@@ -30,6 +54,8 @@ podTemplate(label: label,
             echo "ARN=$role_arn"
             
             echo "EXTERNAL_ID=$external_id"
+            echo "EXTERNAL_ID_VALUE=$EXTERNAL_ID_VALUE"
+
             creds_json=$(aws sts assume-role --duration-seconds 900 --role-arn $role_arn --role-session-name session-ecr --external-id $EXTERNAL_ID_VALUE)
             echo $creds_json
             
@@ -47,20 +73,24 @@ podTemplate(label: label,
 
           '''
         }
-    }
-    stage('Build with Kaniko') {
-        checkout scm 
-
-        container(name: 'kaniko', shell: '/busybox/sh') {
-           withEnv(['PATH+EXTRA=/busybox:/kaniko']) {
-            sh '''#!/busybox/sh
-              echo "config.json >>>>"
-              cat /kaniko/.docker/config.json
-              /kaniko/executor --context `pwd` --destination $docker_repo_server/$docker_image_name:$BUILD_NUMBER
-            '''
-           }
-        }
       }
     }
+    stage('Build with Kaniko') {
+        environment {
+          PATH = "/busybox:/kaniko:$PATH"
+        }
+        steps {
+          checkout scm 
+  
+          container(name: 'kaniko', shell: '/busybox/sh') {
+              sh '''#!/busybox/sh
+                echo "config.json >>>>"
+                cat /kaniko/.docker/config.json
+                /kaniko/executor --context `pwd` --destination $docker_repo_server/$docker_image_name:$BUILD_NUMBER
+              '''
+          }
+        }
+    }
   }
+}
   
