@@ -1,7 +1,7 @@
 pipeline {
   parameters {
     credentials credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', description: 'External ID', name: 'external_id', required: true
-    string defaultValue: 'https://ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com', description: 'Docker repository server', name: 'docker_repo_server', trim: true
+    string defaultValue: 'ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com', description: 'Docker repository server', name: 'docker_repo_server', trim: true
     string defaultValue: 'project/test', description: 'Docker image name', name: 'docker_image_name', trim: true
     string defaultValue: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME', description: 'Role to assume', name: 'role_arn', trim: true
   }
@@ -41,7 +41,7 @@ spec:
   stages {
     stage('ECR Login') {
       environment {
-        EXTERNAL_ID_VALUE     = credentials('external_id')
+        EXTERNAL_ID_VALUE     = credentials('claire_ecr_external_id')
       }
       steps {
         container('aws-cli') {
@@ -68,7 +68,7 @@ spec:
             echo "$login"
             password=$(echo $login | cut -f 6 -d ' ')
             AUTH=$(echo "AWS:$password" | base64 | tr -d \\\\\\n)
-            echo "{\\\"auths\\\":{\\\"$docker_repo_server\\\":{\\\"auth\\\":\\\"$AUTH\\\"}}}" > /kaniko/.docker/config.json
+            echo "{\\\"auths\\\":{\\\"https://$docker_repo_server\\\":{\\\"auth\\\":\\\"$AUTH\\\"}}}" > /kaniko/.docker/config.json
             cat /kaniko/.docker/config.json
 
           '''
@@ -80,8 +80,6 @@ spec:
           PATH = "/busybox:/kaniko:$PATH"
         }
         steps {
-          checkout scm 
-  
           container(name: 'kaniko', shell: '/busybox/sh') {
               sh '''#!/busybox/sh
                 echo "config.json >>>>"
