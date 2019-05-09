@@ -1,6 +1,6 @@
 pipeline {
   parameters {
-    credentials defaultValue: 'claire_ecr_external_id', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', description: 'External ID', name: 'external_id', required: true
+    credentials defaultValue: 'claire_ecr_external_id', credentialType: 'org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl', description: 'External ID', name: 'external_id'
     string defaultValue: 'ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com', description: 'Docker repository server', name: 'docker_repo_server', trim: true
     string defaultValue: 'project/test', description: 'Docker image name', name: 'docker_image_name', trim: true
     string defaultValue: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME', description: 'Role to assume', name: 'role_arn', trim: true
